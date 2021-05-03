@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" ng-app="strawberry">
+    <head>
+        <meta charset="utf-8">
+        <title>Mindadev</title>
+        <script src='https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js'></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular-sanitize.js"></script>
+        <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet'>
+        <link href='https://fonts.googleapis.com/css?family=Epilogue' rel='stylesheet'>
+        <meta content='width=device-width, initial-scale=1.0' name='viewport'>
+    </head>
+    <body ng-controller="main">
+        <!-- COMPONENT: PAGE LOADER -->
+        <div ng-show="isRendering" class="everything centered">
+            <div class="loader">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+        </div>
+        <header>
+            <section id="header_top"></section>
+            <section id="header_center"></section>
+            <section id="header_bottom"></section>
+        </header>
+        <main>
+            <section id="main_left"></section>
+            <section id="main_middle"></section>
+            <section id="main_bottom"></section>
+        </main>
+        <footer>
+            <section id="footer_top"></section>
+            <section id="footer_center"></section>
+            <section id="footer_bottom"></section>
+        </footer>
+
+
+    <!-- INITIAL SETUP-->
+
+    <script type="text/javascript">
+        var pageSetter=function(t){var n,r,a=new Object;return t.forEach(function(t){t.split("?").forEach(function(t){t.split("#").forEach(function(t){var a=t.split("=");void 0!==a[1]&&(n=a[0],r=a[1])})})}),a.key=n,a.value=r,a};
+
+        //setting session key
+        var setSessionKey=function(e){localStorage.setItem("sid",e)};
+
+        // getting session key
+        var getSessionKey=function(){return null==localStorage.getItem("sid")?"none":localStorage.getItem("sid")};
+        // Setting the User Key:
+        var setUserkey=function(e){localStorage.setItem("uid",e)};
+
+        // Getting User Key:
+        var getUserKey=function(){return null==localStorage.getItem("uid")?"none":localStorage.getItem("uid")};
+
+        var server = angular.module('strawberry', ['ngSanitize']);
+
+        server.controller('main', function($templateRequest, $sce, $compile, $scope, $http, $location){
+            var render=function(e,t,a,c){$scope.data=[],$templateRequest($sce.getTrustedResourceUrl(t)).then(function(t){void 0!==c&&angular.forEach(c,function(e,t){$scope.data[t]=e}),$compile($("#"+e).append(t))($scope)})};
+            var viewAPI = viewPath(app.paths.views,null==pageSetter($location.absUrl().split("/")).key?app.defaults.key:pageSetter($location.absUrl().split("/")).key,null==pageSetter($location.absUrl().split("/")).value?app.defaults.value:pageSetter($location.absUrl().split("/")).value);
+            var viewRenderStatus = function(e){$scope.isRendering = e;}
+
+            $scope.showThisPage = [];
+            $scope.postData = [];
+            $scope.showViewMorePhrase = [];
+            $scope.showEmptyPhrase = [];
+
+            // Page Load Procedure
+            viewRenderStatus(true);
+            //console.log("Page Loader API: "+viewAPI);
+            var width = $(window).width();
+            var height = $(window).height();
+            $http.post(viewAPI, { rsk:getSessionKey(), rid:getUserKey(), xwidth: width, xheight: height }).then(function (response) {
+                //console.log(response.data);
+                if ( response.data.code == 401 ) {
+                    render(component.login.id, component.login.path, "login", "undefined");
+                }
+                else if ( response.data.code == 200 ) {
+                    $scope.pageData = response.data.templates;
+                    $scope.postTemplate = response.data.data.post_template;
+                    if ( ! ( response.data.data.comment_template == undefined ) ) {
+                        $scope.commentTemplate = response.data.data.comment_template;
+                    }
+                    angular.forEach($scope.pageData, function(templatesData, templateNames) {
+                        if ( templatesData.id !== undefined ) {
+                            angular.forEach(templatesData, function(value, key){
+                                if (key == "kind") {
+                                    kind = value;
+                                }
+                                else if (key == "id") {
+                                    id = value;
+                                }
+                                else if (key == "path"){
+                                    path = value;
+                                }
+                                else if (key == "data"){
+                                    data = value;
+                                }
+                                else {
+
+                                }
+                            });
+                            render(id, path, kind, data);
+                        }
+                    });
+                }
+                else {
+                    render(component.notfound.id, component.notfound.path, "notfound", "undefined");
+                }
+                viewRenderStatus(false);
+
+            });
+
+
+
+            $scope.loadMore = function(pageNum) {
+                var nextPage = pageNum+1;
+                loadMoreAPI = viewAPI+"&page_num="+nextPage+"&type=paginate";
+                //console.log(loadMoreAPI);
+                $http.get(loadMoreAPI).then(function (response) {
+                    //console.log(response.data.data);
+                    if ( response.data.data.length === 0 ) {
+                        $scope.showViewMorePhrase[pageNum] = false;
+                        $scope.showViewMorePhrase[nextPage] = false;
+                        $scope.showEmptyPhrase[pageNum] = true;
+                    }
+                    else {
+                        $scope.postData[nextPage] = response.data.data;
+                        $scope.showThisPage[nextPage] = true;
+                        $scope.showViewMorePhrase[pageNum] = false;
+                        $scope.showViewMorePhrase[nextPage] = true;
+                    }
+                });
+
+            }
+
+        });
+    </script>
+
+    <script type="text/javascript">
+        /*************************/
+        // This is the configuration file for your app
+
+        const app = new Object;
+        app.paths = new Object;
+        app.defaults = new Object;
+        app.paths.server = "http://islandreviews.net/api";
+        app.paths.views = "http://islandreviews.net/api/public/v1/get/viewer/data?";
+        app.paths.local = "../index.html";
+        app.defaults.key = "view";
+        app.defaults.value = "home";
+
+
+        /*************************/
+        // These are the configurations of your default components
+
+        const component = new Object;
+        component.notfound = new Object;
+        component.notfound.id = "main_middle";
+        component.notfound.path = "not_found.htm";
+        component.login = new Object;
+        component.login.id = "main_middle";
+        component.login.path = "login.htm";
+
+
+        /*************************/
+        // These are the configurations for your View Loader API:
+        var viewPath = function(viewAPI, request, value){
+
+            if (request == "profile") {
+                return viewAPI+"view=profile&username="+value;
+            }
+            else if ( request == "post" ) {
+                return viewAPI+"view=post&post_id="+value;
+            }
+            else if ( request == "topic" ) {
+                return viewAPI+"view=group&group_id="+value;
+            }
+            else {
+
+            }
+
+            return viewAPI+"view="+value;
+        }
+    </script>
+
+
+    <!-- COMPONENTS-->
+    <script id="not_found.htm" type="text/ng-template">
+        <div class="everything centered">
+            <div class="centrally-aligned flex container with column layout">
+                <h1 class="large title">404</h1>
+                <h2 class="centered regular subtitle">We couldn't find what you're looking for.</h2>
+            </div>
+        </div>
+    </script>
+
+    <!--HEADER: MOBILE-->
+    <script id="header_mobile.htm" type="text/ng-template">
+        <div class="centrally-aligned flex header in full width">
+            <div class="flex">
+                <div class="mobile-menu">
+                    <ul class="menu-trigger">
+                        <li></li>
+                        <li></li>
+                        <li></li>
+                        <li></li>
+                    </ul>
+                </div>
+                <div class="site-logo"><img class="site-logo-small" src="images/logo-small.png"></div>
+            </div>
+        </div>
+        <div class="mobile-menu-wrapper">
+            <div class="small box">
+                <div ng-if="data.isLoggedIn == false" class="new-account-ad">
+                    <a href="./index.html?page=create_account" class="large dark flex rounded button"> Create New Account </a>
+                    <div class="small subtitle" style="padding: 12px;">Join us and start posting development updates</div>
+                </div>
+                <div ng-if="data.isLoggedIn == true" class="new-account-ad">
+                    <a href="./index.html?page=my_profile" class="large primary flex rounded button"> My profile </a>
+                    <div class="small subtitle" style="padding: 12px;">View and edit your profile data</div>
+                </div>
+                <hr class="soft-pad">
+                <!--
+                <div class="mobile-menu-entry centrally-aligned flex">
+                    <img class="medium icon me-icon" src="images/project.svg">
+                    <div class="medium title">Projects</div>
+                </div>
+                -->
+                <hr class="soft-pad">
+                <div class="mobile-menu-entry centrally-aligned flex">
+                    <img class="medium icon me-icon" src="images/topics.svg">
+                    <div class="medium title">Topics</div>
+                </div>
+                <hr class="soft-pad">
+                <div class="mobile-menu-entry centrally-aligned flex">
+                    <img class="medium icon me-icon" src="images/info.svg">
+                    <div class="medium title">About Us</div>
+                </div>
+            </div>
+            <div class="small box">
+                <div class="mobile-menu-entry centrally-aligned flex">
+                    <img class="medium icon me-icon" src="images/login.svg">
+                    <div class="medium title" ng-if="data.isLoggedIn == false">Login</div>
+                    <div class="medium title" ng-if="data.isLoggedIn == true">Logout</div>
+                </div>
+            </div>
+        </div>
+        <style>
+            ul{
+            top: 50%;  left: 50%;
+            transform: translate(-50%,-50%);
+            width: 30px;  height: 30px;
+            cursor: pointer;
+            position: relative;
+            }
+            ul li{
+            list-style: none;
+            position: absolute;
+            left: 5%;
+            transform: translateY(-50%);
+            width: 90%; height: 4px;
+            background: #fff;
+            border-radius: 20px;
+            transition: .3s;
+            opacity: 1;
+            }
+            ul li:nth-of-type(1){
+            top: 20%;
+            }
+            ul li:nth-of-type(2),ul li:nth-of-type(3){
+            top: 50%;
+            }
+            ul li:nth-of-type(4){
+            top: 80%;
+            }
+
+            ul.active li:nth-of-type(1){
+            top: -20%;
+            opacity: 0;
+            }
+            ul.active li:nth-of-type(2){
+            transform: translateY(-50%) rotate(45deg);
+            }
+            ul.active li:nth-of-type(3){
+            transform: translateY(-50%) rotate(-45deg);
+            }
+            ul.active li:nth-of-type(4){
+            top: 120%;
+            opacity: 0;
+            }
+            .me-icon {
+                margin-right: 10px;
+            }
+            .mobile-menu-wrapper{
+                position: fixed;
+                top: 0;
+                padding-top: 75px;
+                margin-left: -600px;
+                background-color: #e8e8e8;
+                width: 80%;
+                height: 100%;
+                transition: 0.5s;
+                max-width: 320px;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+            }
+            .site-logo {
+                font-size: 30px;
+                margin-left: 20px;
+                font-family: 'Roboto';
+                font-weight: bold;
+                letter-spacing: 0.5px;
+                text-shadow: 1px 2px #e91e63;
+            }
+            .soft-pad {
+                border-style: none;
+                height: 1px;
+                background-color: #e2e2e2;
+            }
+            .new-account-ad {padding-bottom: 15px;}
+            .mobile-menu-active {
+                margin-left: 0px;
+            }
+            .mobile-menu-entry {
+                padding-top: 20px;
+                padding-left: 5px;
+                padding-bottom: 20px;
+            }
+            .header {
+                position: fixed;
+                top: 0;
+                z-index: 1000;
+            }
+        </style>
+        <script>
+            $(document).ready(function(){
+               $('.menu-trigger').click(function(){
+                   $(".mobile-menu-wrapper").toggleClass("mobile-menu-active");
+                    $(this).toggleClass('active');
+               });
+           });
+        </script>
+    </script>
+
+    <!--CREATE ACCOUNT-->
+    <script id="create_account.htm" type="text/ng-template">
+        <div class="create-account-wrapper">
+            Hello World!
+        </div>
+    </script>
+
+    <!-- PROFILE DETAILS -->
+    <script id="profile_details_mobile.htm" type="text/ng-template">
+        <div class="page-container">
+            <div class="profile-header-container">
+                <div class="profile-header">
+                    <div>
+                        <div class="profile-photo-wrapper" style="margin-right: 5px; height: 100px;">
+                            <div data-username="" class="click_to_profile" ng-if="data.profile.profile_photo == 'unset'"><img class="standard profile icon" src="images/profile-bold.svg"></div>
+                            <div data-username="" class="click_to_profile profile-photo-user" ng-if="data.profile.profile_photo !== 'unset'" style="background-size: cover; background-position: center;" ng-style="{'background-image': 'url(' + data.profile.profile_photo + ')'}"></div>
+                        </div>
+                        <div class="profile-details-wrapper">
+                            <h1 class="regular primary title">@{{ data.profile.username }}</h1>
+                            <h2 class="small subtitle" style="margin-top: -4px;"><strong>{{ data.profile.first_name }} {{ data.profile.last_name }}</strong></h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <hr class="soft-pad">
+        <br>
+        <div class="medium light gray tag in full width" style="text-align: center;">Posts</div>
+
+        <div ng-if="data.has_posts == false">
+            <div class="small centered subtitle">There are no posts to show.</div>
+            <style>
+                .load-more-post {display: none;}
+            </style>
+        </div>
+
+        <div class="post-wrapper">
+            <div ng-include="postTemplate" ng-repeat="post in data.posts"></div>
+        </div>
+        <div id="load_more_posts"></div>
+        <span ng-init="pages = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"></span>
+        <span ng-init="showThisPage = [true, true]"></span>
+        <span ng-init="showViewMorePhrase = [false, true]"></span>
+        <span ng-init="showEmptyPhrase = [false, false]"></span>
+        <div class="load-more-post" ng-repeat="page in pages">
+            <div ng-show="showThisPage[page]">
+                <div ng-include='postTemplate' ng-repeat="post in postData[page]"></div>
+                <div ng-show="showViewMorePhrase[page]" ng-click="loadMore(page)" class="small centered subtitle cb">View More Posts ↓</div>
+                <div ng-show="showEmptyPhrase[page]" class="small centered subtitle cb">There are no more posts to show.</div>
+            </div>
+        </div>
+        <br><br><br><br>
+
+        <style>
+            .profile-header {
+                background-color: #f9f9f9;
+                padding-bottom: 15px;
+                padding-top: 15px;
+                border-bottom-right-radius: 150px;
+                border-bottom-left-radius: 150px;
+                display: flex;
+                justify-content: center;
+                width: 100%;
+                height: 100px;
+            }
+            .profile-details-wrapper {
+                text-align: center;
+                margin-top: 20px;
+            }
+            .profile-header-container {
+                height: 210px;
+            }
+            .profile-photo-user{
+                height: 120px;
+                width: 120px;
+                border-radius: 100px;
+            }
+        </style>
+    </script>
+
+    <!-- SINGLE POST TEMPLATE -->
+    <script id="single_post_template.htm" type="text/ng-template">
+        <div class="post-card flex">
+            <div class="post-col-1">
+                <a href="./index.html?profile={{ post.p_uname }}"><div ng-if="post.p_photo == 'unset'"> <img class="profile-icon" src="images/profile-bold.svg"></div></a>
+                <a href="./index.html?profile={{ post.p_uname }}"><div class="profile-photo-post" ng-if="post.p_photo !== 'unset'" style="background-size: cover; background-position: center;" ng-style="{'background-image': 'url(' + post.p_photo + ')'}"></div></a>
+            </div>
+            <div class="post-col-2" style="margin-left: 8px;">
+                <div class="light gray regular tag" style="letter-spacing: 0.5px;">{{ post.date }} {{ post.time }}</div>
+                <a href="./index.html?profile={{ post.p_uname }}"><h2 class="small subtitle post-author-name" style="margin-top: -4px;"><strong>{{ post.p_fname }} {{ post.p_lname }}</strong> <span class="uname">• {{ post.p_uname }} </span></h2></a>
+                <h3 class="small subtitle"><a href="./index.html?topic={{ post.p_group }}"><span class="post-group">@{{ post.p_group }}</span></a><a href="./index.html?post={{ post.p_uname }}_{{ post.p_id }}"> {{ post.content }}<span class="post-see-more">see more</span></a></h3>
+                <hr class="very-soft">
+                <div class="metrics-section" ng-if="data.isLoggedIn == false">
+                    <img class="metric-icon" src="https://1.bp.blogspot.com/-HI7xmz6MoGM/YI-_8UCwQaI/AAAAAAAAATQ/xXWvtrWYdxk2wR5uJSiLlbONuoooRSuJACLcBGAsYHQ/s0/heart-passive.png"><div class="metric-num">{{ post.p_hearts }} love</div>
+                    <img class="metric-icon" src="https://1.bp.blogspot.com/-EArFXPcs0KM/YI_Am5I4ccI/AAAAAAAAATY/7v4nFy1smd81jDp1tbB9-161Mk3pnIm1QCLcBGAsYHQ/s0/comment-passive.png"><div class="metric-num">{{ post.p_comments }} comments</div>
+                </div>
+            </div>
+        </div>
+        <hr class="very-soft">
+        <style>
+            .post-card {
+                padding: 20px;
+                padding-bottom: 10px;
+            }
+            .post-author-name {
+                padding-top: 3px;
+                margin-bottom: -5px;
+            }
+            .uname {
+                color: #9e9e9e;
+                font-size: 11px;
+            }
+            .post-see-more {
+                font-size: 12px;
+                color: #212121;
+            }
+            .profile-icon {
+                width: 80px;
+                height: 80px;
+            }
+            .post-group {
+                font-size: 14px;
+                color: #3f51b5;
+                font-weight: bold;
+            }
+            .profile-photo-post {
+                height: 55px;
+                width: 55px;
+                border-radius: 50px;
+            }
+            .metrics-section {
+                display: flex;
+                align-items: center;
+            }
+            .post-col-1 {
+                margin-right: 8px;
+            }
+            .metrics-section {
+                margin-top: 20px;
+            }
+            .metric-icon {
+                width: 22px;
+                height: 22px;
+            }
+            .metric-num {
+                font-size: 14px;
+                font-family: 'Roboto';
+                margin-left: 5px;
+                margin-top: -3px;
+                margin-right: 15px;
+            }
+        </style>
+    </script>
+
+    <!-- POST SINGLE TEMPLATE -->
+    <script id="post_single_mobile.htm" type="text/ng-template">
+        <div class="topic-page-container">
+            <div class="topic-header-container">
+                <div class="centrally-aligned flex">
+                    <div class="light regular gray tag">Topic</div>
+                    <div class="small subtitle post-group" style="margin-left: 10px; margin-top: 3px;"><strong>@{{ data.group.group_id }}</strong></div>
+                </div>
+                <div class="topic-title">{{ data.group.group_name }}</div>
+                <div class="topic-description">{{ data.group.group_description }}</div>
+            </div>
+        </div>
+        <br><br>
+        <hr class="soft-pad">
+        <br>
+        <div class="post-card flex">
+            <div class="post-col-1">
+                <a href="./index.html?profile={{ data.profile.p_uname }}"><div ng-if="data.profile.p_photo == 'unset'"> <img class="profile-icon" src="images/profile-bold.svg"></div></a>
+                <a href="./index.html?profile={{ post.p_uname }}"><div class="profile-photo-post" ng-if="data.profile.p_photo !== 'unset'" style="background-size: cover; background-position: center;" ng-style="{'background-image': 'url(' + data.profile.p_photo + ')'}"></div></a>
+            </div>
+            <div class="post-col-2" style="margin-left: 8px;">
+                <div class="light gray regular tag" style="letter-spacing: 0.5px;">{{ data.posts.details.created_at_readable }} {{ data.posts.details.created_time_readable }}</div>
+                <a href="./index.html?profile={{ data.profile.p_uname }}"><h2 class="small subtitle post-author-name" style="margin-top: -4px;"><strong>{{ data.profile.p_fname }} {{ data.profile.p_lname }}</strong></h2></a>
+                <h3 class="small title post-author-username post-group">@{{ data.profile.p_uname }}</h3>
+            </div>
+        </div>
+        <div class="post-card post-content-single">
+            <h3 class="small subtitle">{{ data.posts.details.content }}</h3>
+            <hr class="very-soft">
+            <div class="metrics-section" ng-if="data.isLoggedIn == false">
+                <img class="metric-icon" src="https://1.bp.blogspot.com/-HI7xmz6MoGM/YI-_8UCwQaI/AAAAAAAAATQ/xXWvtrWYdxk2wR5uJSiLlbONuoooRSuJACLcBGAsYHQ/s0/heart-passive.png"><div class="metric-num" style="margin-left: 12px">{{ data.p_hearts }} people love this post</div>
+            </div>
+            <br>
+            <hr class="very-soft">
+            <div class="centrally-aligned flex">
+                <img class="metric-icon" src="https://1.bp.blogspot.com/-EArFXPcs0KM/YI_Am5I4ccI/AAAAAAAAATY/7v4nFy1smd81jDp1tbB9-161Mk3pnIm1QCLcBGAsYHQ/s0/comment-passive.png"><h4 class="regular title" style="margin-left: 12px">Comments ( {{data.comments.count}} )</h4>
+            </div>
+        </div>
+        <div class="comment-wrapper">
+            <div ng-include="commentTemplate" ng-repeat="comment in data.comments.comments"></div>
+        </div>
+        <br><br><br><br>
+        <style>
+            .topic-page-container { margin-top: 100px; }
+            .topic-header-container { padding: 0px 20px 0px 20px; }
+            .topic-title {
+                font-size: 28px;
+                font-weight: bold;
+                font-family: 'Roboto';
+                line-height: 34px;
+                text-shadow: 1px 1px #3f51b5;
+                letter-spacing: 0.5px;
+                color: #2d2d2d;
+            }
+            .topic-description {
+                margin-top: 10px;
+                font-family: 'Epilogue';
+                font-size: 14px;
+                line-height: 20px;
+            }
+            .post-card {
+                padding: 20px;
+                padding-bottom: 10px;
+            }
+            .post-author-name {
+                padding-top: 3px;
+                margin-bottom: -5px;
+            }
+            .uname {
+                color: #9e9e9e;
+                font-size: 11px;
+            }
+            .post-see-more {
+                font-size: 12px;
+                color: #212121;
+            }
+            .profile-icon {
+                width: 80px;
+                height: 80px;
+            }
+            .post-group {
+                font-size: 14px;
+                color: #3f51b5;
+                font-weight: bold;
+            }
+            .profile-photo-post {
+                height: 55px;
+                width: 55px;
+                border-radius: 50px;
+            }
+            .metrics-section {
+                display: flex;
+                align-items: center;
+            }
+            .post-content-single {
+                margin-top: -20px;
+            }
+            .post-col-1 {
+                margin-right: 8px;
+            }
+            .metrics-section {
+                margin-top: 20px;
+            }
+            .metric-icon {
+                width: 22px;
+                height: 22px;
+            }
+            .metric-num {
+                font-size: 14px;
+                font-family: 'Roboto';
+                margin-left: 5px;
+                margin-top: -3px;
+                margin-right: 15px;
+            }
+        </style>
+    </script>
+
+    <!-- COMMENT TEMPLATE -->
+    <script id="comment_template_a.htm" type="text/ng-template">
+        <div class="comment-wrapper-main">
+            <div class="comment-wrapper-left">
+                <a href="./index.html?profile={{ comment.p_uname }}"><div ng-if="comment.p_photo == 'unset'"> <img class="profile-icon" src="images/profile-bold.svg"></div></a>
+                <a href="./index.html?profile={{ comment.p_uname }}"><div class="profile-photo-post" ng-if="comment.p_photo !== 'unset'" style="background-size: cover; background-position: center;" ng-style="{'background-image': 'url(' + comment.p_photo + ')'}"></div></a>
+            </div>
+            <div class="comment-wrapper-right" style="margin-left: 15px;">
+                <a href="./index.html?profile={{ comment.p_uname }}"><h2 class="small subtitle post-author-name" style="margin-top: -4px;"><strong>{{ comment.p_fname }} {{ comment.p_lname }}</strong> <span class="uname">• {{ comment.p_uname }} </span></h2></a>
+                <div class="light gray regular tag" style="letter-spacing: 0.5px;">{{ comment.date }} {{ comment.time }}</div>
+                <h3 class="small subtitle">{{ comment.content }}</h3>
+            </div>
+        </div>
+        <style>
+            .comment-wrapper-main {padding: 15px 30px 15px 30px; display: flex;}
+
+        </style>
+    </script>
+
+    <script id="post_details_mobile.htm" type="text/ng-template">
+        Hello World!
+    </script>
+
+    <!-- PROFILE DETAILS -->
+    <script id="topic_details_mobile.htm" type="text/ng-template">
+        <div class="topic-page-container">
+            <div class="topic-header-container">
+                <div class="light regular gray tag">Topic</div>
+                <div class="topic-title">{{ data.details.group_name }}</div>
+                <div class="topic-description">{{ data.details.group_description }}</div>
+            </div>
+        </div>
+        <br><br>
+        <hr class="soft-pad">
+        <br>
+        <div class="medium light gray tag in full width" style="text-align: center;">Posts</div>
+        <div ng-if="data.has_posts == false">
+            <div class="small centered subtitle">There are no posts to show.</div>
+            <style>
+                .load-more-post {display: none;}
+            </style>
+        </div>
+
+        <div class="post-wrapper">
+            <div ng-include="postTemplate" ng-repeat="post in data.posts"></div>
+        </div>
+
+        <div id="load_more_posts"></div>
+        <span ng-init="pages = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"></span>
+        <span ng-init="showThisPage = [true, true]"></span>
+        <span ng-init="showViewMorePhrase = [false, true]"></span>
+        <span ng-init="showEmptyPhrase = [false, false]"></span>
+        <div class="load-more-post" ng-repeat="page in pages">
+            <div ng-show="showThisPage[page]">
+                <div ng-include='postTemplate' ng-repeat="post in postData[page]"></div>
+                <div ng-show="showViewMorePhrase[page]" ng-click="loadMore(page)" class="small centered subtitle cb">View More Posts ↓</div>
+                <div ng-show="showEmptyPhrase[page]" class="small centered subtitle cb">There are no more posts to show.</div>
+            </div>
+        </div>
+        <br><br><br><br>
+
+
+
+        <style>
+            .topic-page-container { margin-top: 100px; }
+            .topic-header-container { padding: 0px 20px 0px 20px; }
+            .topic-title {
+                font-size: 28px;
+                font-weight: bold;
+                font-family: 'Roboto';
+                line-height: 34px;
+                text-shadow: 1px 1px #3f51b5;
+                letter-spacing: 0.5px;
+                color: #2d2d2d;
+            }
+            .topic-description {
+                margin-top: 10px;
+                font-family: 'Epilogue';
+                font-size: 14px;
+                line-height: 20px;
+            }
+        </style>
+    </script>
+
+    <style>
+        /*@import url('https://fonts.googleapis.com/css2?family=Epilogue:wght@300;400&family=Roboto:wght@100;400;700&display=swap');*/
+        * { padding: 0; margin: 0; box-sizing: border-box; }
+        header { width: 100%; }
+        main { width: 100%; }
+        footer { width: 100%; }
+        a:link { text-decoration: none !important; color: black; }
+        a:visited { text-decoration: none !important; color: black; }
+
+        /* SPECIFIC TO THIS PROJECT */
+        .header{
+            box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); transition: 0.3s;
+            /*background-color: #2f2f2f;*/
+            background: rgb(17,182,191);
+            background: linear-gradient(0deg, rgba(17,182,191,1) 0%, rgba(81,143,235,1) 98%);
+            height: 70px;
+            padding: 10px;
+        }
+
+        .very-soft {
+            border-style: none;
+            background-color: whitesmoke;
+            height: 1px;
+            margin-top: 3px;
+            margin-bottom: 15px;
+        }
+
+        .site-logo-small {
+            height: 45px;
+            margin-top: 10px;
+        }
+
+        .page-container {
+            margin-top: 70px;
+        }
+
+        .clickable { cursor: pointer; }
+
+        /* Widths */
+        .in.full.width { width: 100%; }
+
+        /* Containers, Boxes, Blocks, and Wrappers */
+        .block {padding: 8px 12px 0px 12px;}
+        .box.small { padding: 18px 22px 0px 22px; }
+        .box.medium { padding: 20px 24px 0px 24px; }
+        .box.large { padding: 22px 26px 0px 26px; }
+        .container { padding: 26px 28px 0px 28px; }
+        .container.small { padding: 26px 30px 0px 30px; }
+        .container.large { padding: 30px 32px 0px 32px; }
+
+        /* Flex Box */
+        .flex { display: flex; }
+        .centrally-aligned { align-items: center;}
+        .centrally-justified { justify-content: center; }
+        .flex.column.layout { flex-direction: column; }
+        .everything.centered { display: flex; align-items: center; justify-content: center; height: 95vh; }
+
+        /* Icons */
+        .large.icon { width: 50px; height: 50px; }
+        .medium.icon { width: 35px; height: 35px; }
+        .small.icon {
+            width: 25px;
+            height: 25px;
+        }
+        .standard.profile.icon { width: 150px; height: 150px; }
+
+        /* Cards */
+        .card { box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); transition: 0.3s; }
+        .card.white { background-color: white; }
+        .card.regular { max-width: 500px; }
+
+        /* Title, Subtitle, and Texts */
+        .title { font-family: 'Roboto'; }
+        .title.large { font-size: 24px; padding-bottom: 7px; line-height: 28px;}
+        .title.regular { font-size: 20px; padding-bottom: 7px; line-height: 26px; }
+        .title.small { font-size: 14px; padding-bottom: 5px; line-height: 20px; font-weight: 400; }
+        .title.extra.small { }
+        .title.centered { text-align: center; }
+        .title.primary { color: #3f51b5; }
+
+
+        .subtitle { font-family: 'Epilogue'; font-weight: 100 !important;}
+        .subtitle.large { }
+        .subtitle.regular { font-size: 16px; padding-bottom: 6.5px; line-height: 24px; }
+        .subtitle.small { font-size: 14px; padding-bottom: 5px; line-height: 1.5;}
+        .subtitle.very.small { font-size: 12px; padding-bottom: 5px; line-height: 20px;  }
+        .subtitle.extrasmall { }
+        .subtitle.centered { text-align: center; }
+
+
+        /* Colors */
+        .with.white.background { background-color: white; }
+
+        /* Tags */
+        .tag { font-family: 'Calibri'; text-transform: uppercase; width: max-content; height: max-content;}
+        .tag.regular { font-size: 12px; padding: 0px 8px; margin-bottom: 4px;}
+        .tag.primary { background-color: #3f51b5; color: white; }
+        .tag.light.regular { font-size: 12px; margin-bottom: 4px; padding: 0px; line-height: 15px; }
+        .tag.small { font-size: 10px; padding: 0px 6px; margin-bottom: 4px; }
+        .tag.dark { background-color: #282828; color: white; }
+
+        .light.gray { color: #989898; }
+
+        /* Messages */
+        .message { font-size: 12px; font-family: 'Epilogue'; font-weight: bold; line-height: 18px; }
+        .message.danger { color: #e91e31; }
+        .message.success { color: #009688; }
+        .message.info { color: #3f51b5; }
+        .message.gray { color: gray; }
+
+
+        /* Modals */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100% !important; z-index: 1000; }
+        .modal.with.darkened.background { background-color: #27272754; }
+        .modal.card { background-color: white; }
+
+        /* Forms */
+        input { border-style: solid; border-width: 1px; border-color: #cccccc; background-color: #ffffff00; }
+        input:focus{ outline: none; border-color: #3f51b5; }
+        .input.large { padding: 16px 20px; font-size: 24px; }
+        .input.medium { padding: 14px 16px; font-size: 20px; }
+        .input.regular { padding: 14px 16px; font-size: 16px; }
+        .input.danger { border-color: #e91e31; }
+        button {border-style: none; width: max-content; }
+        button:focus { outline: none; }
+        .button.primary { background-color: #3f51b5; color: white }
+        .button.dark { background-color: #2d2d2d; color: white }
+        .button.regular { padding: 14px 18px; font-size: 14px; }
+        .button.small { padding: 10px 18px; font-size: 12px; }
+        .button.warning {background-color: #f7b408; color: white; }
+        .button.danger {background-color: #f44336; color: white;}
+        .button.close { color: #909090; font-size: 10px; font-family: Tahoma; }
+        .button.medium { padding: 12px 16px; font-size: 16px; }
+        .button.large { padding: 16px 20px; font-size: 18px; }
+        .button { cursor: pointer; font-family: 'Roboto'; height: max-content; margin-left: 5px; transition: 0.5s; width: max-content;}
+        .button:hover {box-shadow: 0 1px 2px 0 rgba(150, 150, 150, 0.24);}
+        /* Rounds */
+        .rounded { border-radius: 18px; }
+        .slightly-rounded { border-radius: 8px;}
+
+
+        .soft-pad {
+            border-style: none;
+            height: 1px;
+            background-color: #e2e2e2;
+        }
+
+        .loader {
+        width: 60px;
+        height: 60px;
+        display: flex;
+        justify-content: space-evenly;
+        align-items: center;
+        }
+        .dot {
+        width: .50em;
+        height: .50em;
+        border-radius: 50%;
+        background: #009688;
+        animation-duration: 1.3s;
+        animation-iteration-count: infinite;
+        }
+        @keyframes loader_left {
+        0%   { opacity: .8; }
+        20%   { opacity: .3; }
+        40%   { opacity: .8; }
+        60%   { opacity: 1; }
+        100% { opacity: 1; }
+        }
+        @keyframes loader_middle {
+        0% { opacity: 1; }
+        20%   { opacity: .8; }
+        40%   { opacity: .3; }
+        60%   { opacity: .8; }
+        100% { opacity: 1; }
+        }
+        @keyframes loader_right {
+        0% { opacity: 1; }
+        20%   { opacity: 1; }
+        40%   { opacity: .8; }
+        60%   { opacity: .3; }
+        100% { opacity: 1; }
+        }
+        .dot:nth-of-type(1) {
+        animation-name: loader_left;
+        }
+        .dot:nth-of-type(2) {
+        animation-name: loader_middle;
+        }
+        .dot:nth-of-type(3) {
+        animation-name: loader_right;
+        }
+    </style>
+
+    </body>
+</html>
