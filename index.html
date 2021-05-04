@@ -1,16 +1,17 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr" ng-app="strawberry">
+<html lang="en" dir="ltr" ng-app="strawberry" ng-controller="main">
     <head>
         <meta charset="utf-8">
-        <title>Estoryahey!</title>
+        <title>Estoryahey! {{ data.details.group_name }}</title>
         <script src='https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js'></script>
         <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
         <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular-sanitize.js"></script>
         <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet'>
         <link href='https://fonts.googleapis.com/css?family=Epilogue' rel='stylesheet'>
+        <meta property="og:image" content="{{ data.details.group_photo }}"/>
         <meta content='width=device-width, initial-scale=1.0' name='viewport'>
     </head>
-    <body ng-controller="main">
+    <body>
         <!-- COMPONENT: PAGE LOADER -->
         <div ng-show="isRendering" class="everything centered">
             <div class="loader">
